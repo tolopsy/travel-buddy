@@ -1,5 +1,7 @@
 package travel
 
+var APIKey string
+
 type Place struct {
 	*googleGeometry `json:"geometry"`
 	Name            string         `json:"name"`
@@ -10,12 +12,13 @@ type Place struct {
 
 func (p *Place) Public() interface{} {
 	return map[string]interface{}{
-		"name": P.Name,
-		"icon": P.Icon,
-		"photos": P.Photos,
-		"vicinity": P.Visinity,
-		"lat" : P.lat
-		"lng":  P.lng
+		"name": p.Name,
+		"icon": p.Icon,
+		"photos": p.Photos,
+		"vicinity": p.Vicinity,
+		"lat" : p.Lat,
+		"lng":  p.Lng,
+	}
 }
 
 type googleResponse struct {
