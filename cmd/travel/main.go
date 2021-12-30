@@ -3,14 +3,36 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
-	"travel-buddy/travel"	
+	"travel-buddy/travel"
 )
 
+var LOGFILE = "logs/main.log"
+
+func setLogger(logFiles ...io.Writer) {
+	logFiles = append(logFiles, os.Stdout)
+	logWriter := io.MultiWriter(logFiles...) // logs error in both console and file
+	log.SetOutput(logWriter)
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	log.SetPrefix("TravelBuddy: ")
+}
+
 func main() {
-	
+	// custom log file
+	file, err := os.OpenFile(LOGFILE, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatalln("Error while opening log file:", err)
+		return
+	}
+	defer file.Close()
+
+	setLogger(file)
+
 	http.HandleFunc("/journeys", cors(func(responseWriter http.ResponseWriter, req *http.Request) {
 		respond(responseWriter, req, travel.Journeys)
 	}))
@@ -24,18 +46,21 @@ func main() {
 		query.Lat, err = strconv.ParseFloat(req.URL.Query().Get("lat"), 64)
 		if err != nil {
 			http.Error(responseWriter, err.Error(), http.StatusBadRequest)
+			log.Println(err)
 			return
 		}
 
 		query.Lng, err = strconv.ParseFloat(req.URL.Query().Get("lng"), 64)
 		if err != nil {
 			http.Error(responseWriter, err.Error(), http.StatusBadRequest)
+			log.Println(err)
 			return
 		}
 
 		query.Radius, err = strconv.Atoi(req.URL.Query().Get("radius"))
 		if err != nil {
 			http.Error(responseWriter, err.Error(), http.StatusBadRequest)
+			log.Println(err)
 			return
 		}
 		query.CostRangeStr = req.URL.Query().Get("cost")
@@ -43,8 +68,8 @@ func main() {
 		respond(responseWriter, req, places)
 	}))
 
-	fmt.Println("Listening and Serving at :8080")
-	http.ListenAndServe(":8080", http.DefaultServeMux)
+	fmt.Println("Listening and Serving at :9000")
+	http.ListenAndServe(":9000", http.DefaultServeMux)
 }
 
 func respond(writer http.ResponseWriter, req *http.Request, data []interface{}) error {
@@ -52,7 +77,9 @@ func respond(writer http.ResponseWriter, req *http.Request, data []interface{}) 
 	for index, value := range data {
 		publicData[index] = travel.Public(value)
 	}
-	return json.NewEncoder(writer).Encode(publicData)
+	encoder := json.NewEncoder(writer)
+	encoder.SetIndent("", "    ")
+	return encoder.Encode(publicData)
 }
 
 func cors(f http.HandlerFunc) http.HandlerFunc {

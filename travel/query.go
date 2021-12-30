@@ -7,18 +7,26 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"os"
 	"sync"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
-var APIKey string
+var APIKey string = func() string {
+	if err := godotenv.Load(); err != nil {
+		log.Println("Unable to load env variables:", err)
+	}
+	return os.Getenv("GOOGLE_PLACES_API_KEY")
+}()
 
 type Place struct {
-	*googleGeometry `json:"geometry"`
-	Name            string         `json:"name"`
-	Icon            string         `json:"icon"`
-	Photos          []*googlePhoto `json:"photos"`
-	Vicinity        string         `json:"vicinity"`
+	googleGeometry `json:"geometry"`
+	Name           string        `json:"name"`
+	Icon           string        `json:"icon"`
+	Photos         []*googlePhoto `json:"photos"`
+	Vicinity       string        `json:"vicinity"`
 }
 
 func (p *Place) Public() interface{} {
@@ -37,12 +45,12 @@ type googleResponse struct {
 }
 
 type googleGeometry struct {
-	*googleLocation `json:"location"`
+	googleLocation `json:"location"`
 }
 
 type googleLocation struct {
-	Lat float64 `json:"Lat"`
-	Lng float64 `json:"Lng"`
+	Lat float64 `json:"lat"`
+	Lng float64 `json:"lng"`
 }
 
 type googlePhoto struct {
@@ -58,13 +66,13 @@ type Query struct {
 	CostRangeStr string
 }
 
-func (q *Query) find(types string) (*googleResponse, error) {
+func (q *Query) find(placeCategory string) (*googleResponse, error) {
 	queryUrl := "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
 
 	queryParams := make(url.Values)
 	queryParams.Set("location", fmt.Sprintf("%g,%g", q.Lat, q.Lng))
 	queryParams.Set("radius", fmt.Sprintf("%d", q.Radius))
-	queryParams.Set("types", types)
+	queryParams.Set("types", placeCategory)
 	queryParams.Set("key", APIKey)
 
 	if len(q.CostRangeStr) > 0 {
@@ -73,7 +81,6 @@ func (q *Query) find(types string) (*googleResponse, error) {
 		if err != nil {
 			return nil, err
 		}
-
 		queryParams.Set("minprice", fmt.Sprintf("%d", int(costRange.From)-1))
 		queryParams.Set("maxprice", fmt.Sprintf("%d", int(costRange.To)-1))
 	}
@@ -89,7 +96,7 @@ func (q *Query) find(types string) (*googleResponse, error) {
 	if err := json.NewDecoder(queryResponse.Body).Decode(&gResponse); err != nil {
 		return nil, err
 	}
-
+	
 	return &gResponse, nil
 }
 
@@ -99,33 +106,34 @@ func (q *Query) Run() []interface{} {
 	var accessGiver sync.Mutex
 
 	places := make([]interface{}, len(q.Journey))
-	for index, placeTypes := range q.Journey {
+	for index, placeType := range q.Journey {
 		waitGroup.Add(1)
-		go func(types string, i int) {
+		go func(placeCategory string, i int) {
 			defer waitGroup.Done()
-			response, err := q.find(types)
+			response, err := q.find(placeCategory)
 			if err != nil {
 				log.Println("Failed to find places:", err)
 				return
 			}
 
 			if len(response.Results) == 0 {
-				log.Println("No places found for:", types)
+				log.Println("No places found for:", placeCategory)
 				return
 			}
-
+			
 			for _, result := range response.Results {
 				for _, photo := range result.Photos {
 					photo.URL = "https://maps.googleapis.com/maps/api/place/photo?" + "maxwidth=1000&photoreference=" +
-					photo.PhotoRef + "&key=" + APIKey
+						photo.PhotoRef + "&key=" + APIKey
 				}
 			}
+			
 
 			randomizer := rand.Intn(len(response.Results))
 			accessGiver.Lock()
 			places[i] = response.Results[randomizer]
 			accessGiver.Unlock()
-		}(placeTypes, index)
+		}(placeType, index)
 	}
 
 	waitGroup.Wait()
