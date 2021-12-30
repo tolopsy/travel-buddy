@@ -14,7 +14,7 @@ After which you do the following👇🏾
 	 Note: You should assign your API key without quotation marks around it. Let's assume your API key is V5tYuYOei9U
 	 
 	 Don't do `GOOGLE_PLACES_API_KEY="V5tYuYOei9U"` ❌
-	 Do `GOOGLE_PLACES_API_KEY=V5tYuYOei9U` ✅
+     Do `GOOGLE_PLACES_API_KEY=V5tYuYOei9U` ✅
 
 ## Running travel-buddy
 To run travel-buddy, 

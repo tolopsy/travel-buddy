@@ -1,7 +1,6 @@
 vendor/
 go.sum
 .env
-*.log
 # Because I named executables `app` suffix. So, ignore them
 *app
 
