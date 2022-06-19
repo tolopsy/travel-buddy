@@ -21,7 +21,6 @@ To run travel-buddy,
 
  - Confirm in your terminal that the current working directory is travel-buddy project directory.
  - Run `go mod tidy`
- - Run `go mod vendor`
  - Run 👉🏾 `go build -o travel-app ./cmd/travel`
 This will create an executable with the name "travel-app" in your project directory.
  - Run the travel-app executable with `./travel-app` in your terminal.
